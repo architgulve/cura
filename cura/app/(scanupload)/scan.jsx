@@ -9,7 +9,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as MediaLibrary from "expo-media-library";
 import { useRef } from "react";
+import * as ImagePicker from "expo-image-picker";
+import axios from "axios";
+import * as ImageManipulator from "expo-image-manipulator";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import LottieView from "lottie-react-native";
 
 const Scanner = () => {
   const [permission, requestPermission] = useCameraPermissions();
@@ -18,6 +22,91 @@ const Scanner = () => {
   const [mediaPermission, requestMediaPermission] =
     MediaLibrary.usePermissions();
   const windowWidth = Dimensions.get("window").width;
+  const initialDietRef = useRef("");
+  const [loading, setLoading] = useState(false);
+  const [diet, setDiet] = useState(""); 
+
+  const resizeImage = async (uri) => {
+    const result = await ImageManipulator.manipulateAsync(
+      uri,
+      [{ resize: { width: 1000 } }],
+      { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+    );
+    return result.uri;
+  };
+
+  const uploadImageToBackend = async (uri) => {
+    setLoading(true);
+    const resizedUri = await resizeImage(uri);
+
+    const formData = new FormData();
+    formData.append("file", {
+      uri: resizedUri,
+      type: "image/jpeg",
+      name: "photo.jpg",
+    });
+
+    try {
+      const res = await axios.post("http://<your-ip-address>:8000/ocr/", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      const responseText = res.data.text;
+      console.log("Full LLM Response:", responseText);
+
+      const startIndex = responseText.indexOf("[");
+      const endIndex = responseText.indexOf("]") + 1;
+
+      const jsonPart = responseText.slice(startIndex, endIndex);
+      const dietPart = responseText.slice(endIndex).trim();
+
+      let medicineData = [];
+      try {
+        medicineData = JSON.parse(jsonPart);
+      } catch (e) {
+        console.error("Failed to parse medicine JSON:", e, jsonPart);
+      }
+
+      const dietText = dietPart.startsWith("Diet Recommendation:")
+        ? dietPart
+        : "Diet Recommendation:\n" + dietPart;
+
+      await AsyncStorage.setItem("dietRecommendation", dietText);
+      await AsyncStorage.setItem("medicineData", JSON.stringify(medicineData));
+      setDiet(dietText);
+
+      console.log("Medicine Data:", medicineData);
+      console.log("Diet Recommendation:", dietText);
+      router.push("/confirmation");
+    } catch (err) {
+      console.error("Upload error:", err);
+    }
+  };
+
+  const takePicture = async () => {
+    if (cameraRef.current) {
+      const photo = await cameraRef.current.takePictureAsync();
+      console.log("1");
+      await MediaLibrary.createAssetAsync(photo.uri);
+      console.log("2");
+      uploadImageToBackend(photo.uri);
+      console.log("3");
+    }
+  };
+
+  const openGallery = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      const uri = result.assets[0].uri;
+      uploadImageToBackend(uri);
+    }
+  };
 
   useEffect(() => {
     if (!permission || !permission.granted) {
@@ -31,6 +120,13 @@ const Scanner = () => {
     };
     getInitialDiet();
   }, []);
+
+  useEffect(() => {
+    if (diet.trim() && diet !== initialDietRef.current) {
+      setLoading(false);
+      router.push("/confirmation");
+    }
+  }, [diet]);
 
   if (!permission) {
     return <Text>Checking camera permissions...</Text>;
@@ -181,7 +277,7 @@ const Scanner = () => {
               </View>
             </TouchableOpacity>
 
-            <TouchableOpacity>
+            <TouchableOpacity onPress={takePicture}>
               <View
                 style={{
                   borderColor: "#131313",
@@ -235,6 +331,38 @@ const Scanner = () => {
           </View>
         </View>
       </View>
+      {loading && (
+        <View
+          style={{
+            alignItems: "center",
+            justifyContent: "center",
+            height: "100%",
+            backgroundColor: "#DFF6FB",
+            paddingTop: 50,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 20,
+              fontWeight: "bold",
+              marginBottom: 20,
+              position: "absolute",
+              top: 100,
+            }}
+          >
+            Let's see what we can do for you...
+          </Text>
+          <LottieView
+            source={require("../../assets/animations/AIHeart.json")}
+            autoPlay
+            loop
+            style={{
+              height: "100%",
+              width: "100%",
+            }}
+          />
+        </View>
+      )}
     </SafeAreaView>
   );
 };

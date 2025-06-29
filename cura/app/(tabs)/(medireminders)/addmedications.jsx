@@ -1,12 +1,185 @@
-import { View, Text } from 'react-native'
-import React from 'react'
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+} from "react-native";
+import RNPickerSelect from "react-native-picker-select";
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { handleAddMedicationLogic } from "../backend/medicationService";
 
-const addmedications = () => {
+export default function AddMedication() {
+  const [name, setName] = useState("");
+  const [dosage, setDosage] = useState("");
+  const [mealTime, setMealTime] = useState("");
+
+  const handleSubmit = async () => {
+    const result = await handleAddMedicationLogic(name, dosage, mealTime);
+
+    if (result.success) {
+      Alert.alert("Success", "Medication added successfully!", [
+        {
+          text: "OK",
+          onPress: () => {
+            setName("");
+            setDosage("");
+            setMealTime("");
+            router.back();
+          },
+        },
+      ]);
+    } else {
+      Alert.alert("Error", result.message);
+    }
+  };
+
+  const dropdownIcon = () => (
+    <Ionicons name="chevron-down" size={24} color="gray" />
+  );
+
   return (
-    <View>
-      <Text>addmedications</Text>
+    <View style={styles.container}>
+      <View>
+        <Text style={styles.heading}>Add a New Medication</Text>
+
+        <Text style={styles.label}>Medication Name *</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter medication name"
+          value={name}
+          onChangeText={setName}
+        />
+
+        <Text style={styles.label}>Dosage (mg per dose) *</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter dosage in mg"
+          keyboardType="numeric"
+          value={dosage}
+          onChangeText={setDosage}
+        />
+
+        <Text style={styles.label}>Meal Time *</Text>
+        <View style={styles.pickerBox}>
+          <RNPickerSelect
+            onValueChange={setMealTime}
+            items={[
+              { label: "Morning", value: "morning", color: "black" },
+              { label: "Afternoon", value: "afternoon", color: "black" },
+              { label: "Night", value: "night", color: "black" },
+            ]}
+            placeholder={{ label: "Select Time", value: "", color: "black" }}
+            style={pickerSelectStyles}
+            value={mealTime}
+            Icon={dropdownIcon}
+          />
+        </View>
+
+        <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+          <Text style={styles.buttonText}>Add Medication</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={{ width: "100%", alignItems: "center", padding: 10 }}>
+        <TouchableOpacity onPress={() => router.back()}>
+          <View
+            style={{
+              justifyContent: "center",
+              alignItems: "center",
+              backgroundColor: "lightgrey",
+              padding: 5,
+              borderRadius: 100,
+              marginBottom: 30,
+            }}
+          >
+            <Ionicons name="close" size={60} color="black" />
+          </View>
+        </TouchableOpacity>
+      </View>
     </View>
-  )
+  );
 }
 
-export default addmedications
+const styles = StyleSheet.create({
+  container: {
+    flexGrow: 1,
+    backgroundColor: "#e0f7fa",
+    padding: 20,
+    paddingTop: 60,
+    justifyContent: "space-between",
+  },
+  heading: {
+    fontSize: 30,
+    fontWeight: "bold",
+    marginBottom: 20,
+    color: "#000",
+    textAlign: "center",
+  },
+  label: {
+    fontSize: 18,
+    marginBottom: 5,
+    color: "#000",
+    fontWeight: "600",
+  },
+  input: {
+    backgroundColor: "#fff",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 15,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: "#ddd",
+  },
+  pickerBox: {
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    marginBottom: 15,
+    paddingHorizontal: 5,
+    paddingVertical: 3,
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#ddd",
+  },
+  button: {
+    backgroundColor: "#2196f3",
+    padding: 15,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 20,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  buttonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+});
+
+const pickerSelectStyles = {
+  inputIOS: {
+    fontSize: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    color: "black",
+    paddingRight: 30,
+  },
+  inputAndroid: {
+    fontSize: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    color: "black",
+    paddingRight: 30,
+  },
+  iconContainer: {
+    top: 15,
+    right: 10,
+  },
+};

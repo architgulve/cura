@@ -6,34 +6,49 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  ScrollView,
 } from "react-native";
 import RNPickerSelect from "react-native-picker-select";
 import { Ionicons } from "@expo/vector-icons";
+import { addNoti } from "../../../utility/database";
 import { router } from "expo-router";
-import { handleAddMedicationLogic } from "../backend/medicationService";
 
 export default function AddMedication() {
   const [name, setName] = useState("");
   const [dosage, setDosage] = useState("");
-  const [mealTime, setMealTime] = useState("");
+  const [morningTime, setMorningTime] = useState("");
 
-  const handleSubmit = async () => {
-    const result = await handleAddMedicationLogic(name, dosage, mealTime);
+  const handleAddMedication = async () => {
+    if (name && dosage && morningTime) {
+      try {
+        const success = await addNoti(`Take ${name} ${dosage}`, morningTime);
 
-    if (result.success) {
-      Alert.alert("Success", "Medication added successfully!", [
-        {
-          text: "OK",
-          onPress: () => {
-            setName("");
-            setDosage("");
-            setMealTime("");
-            router.back();
-          },
-        },
-      ]);
+        console.log("Insert result:", success);
+
+        if (success) {
+          Alert.alert("Success", "Medication added successfully!", [
+            {
+              text: "OK",
+              onPress: () => {
+                setName("");
+                setDosage("");
+                setMorningTime("");
+                router.back();
+              },
+            },
+          ]);
+        } else {
+          Alert.alert("Error", "Failed to add medication. Please try again.");
+        }
+      } catch (error) {
+        console.error(" Error in handleAddMedication:", error);
+        Alert.alert("Error", "An error occurred while adding the medication.");
+      }
     } else {
-      Alert.alert("Error", result.message);
+      Alert.alert(
+        "Missing Information",
+        "Please fill in all fields before adding the medication."
+      );
     }
   };
 
@@ -63,28 +78,37 @@ export default function AddMedication() {
           onChangeText={setDosage}
         />
 
-        <Text style={styles.label}>Meal Time *</Text>
+        <Text style={styles.label}>Meal Time</Text>
         <View style={styles.pickerBox}>
           <RNPickerSelect
-            onValueChange={setMealTime}
+            onValueChange={setMorningTime}
             items={[
               { label: "Morning", value: "morning", color: "black" },
               { label: "Afternoon", value: "afternoon", color: "black" },
               { label: "Night", value: "night", color: "black" },
             ]}
-            placeholder={{ label: "Select Time", value: "", color: "black" }}
+            placeholder={{
+              label: "Select Morning Time",
+              value: "",
+              color: "black",
+            }}
             style={pickerSelectStyles}
-            value={mealTime}
+            value={morningTime}
             Icon={dropdownIcon}
           />
         </View>
 
-        <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+        <TouchableOpacity style={styles.button} onPress={handleAddMedication}>
           <Text style={styles.buttonText}>Add Medication</Text>
         </TouchableOpacity>
       </View>
-
-      <View style={{ width: "100%", alignItems: "center", padding: 10 }}>
+      <View
+        style={{
+          width: "100%",
+          alignItems: "center",
+          padding: 10,
+        }}
+      >
         <TouchableOpacity onPress={() => router.back()}>
           <View
             style={{

@@ -18,7 +18,7 @@ const Confirmation = () => {
         setMediData(parsed);
       }
     } catch (err) {
-      console.error("❌ Error parsing medicineData:", err);
+      console.error("  Error parsing medicineData:", err);
     }
   };
 
@@ -26,7 +26,7 @@ const Confirmation = () => {
     for (const med of mediData) {
       const result = await addNoti(med.name, med.time);
       if (result) {
-        console.log("✅ Notification added successfully for", med.name);
+        console.log("  Notification added successfully for", med.name);
       }
     }
   };
@@ -99,8 +99,7 @@ const Confirmation = () => {
                 </Text>
                 <Text>Time: {med.time}</Text>
 
-                <View style={{ marginTop: 10 }}>
-                </View>
+                <View style={{ marginTop: 10 }}></View>
               </View>
             ))
           )}

@@ -1,25 +1,197 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   SafeAreaView,
   ScrollView,
   View,
   Text,
   TextInput,
+  Switch,
   StyleSheet,
   TouchableOpacity,
+  Alert,
 } from "react-native";
+import {
+  initializeDatabase,
+  insertSetting,
+  getSettings,
+  getDatabaseStatus,
+  clearSettings,
+} from "../utility/database";
 import RNPickerSelect from "react-native-picker-select";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const timeSlots = Array.from({ length: 24 * 12 }, (_, i) => {
-  const hour = Math.floor(i / 12)
-    .toString()
-    .padStart(2, "0");
-  const minute = ((i % 12) * 5).toString().padStart(2, "0");
-  return { label: `${hour}:${minute}`, value: `${hour}:${minute}` };
-});
+
+const generateTimeSlots = () => {
+  const timeSlots = [];
+  for (let hour = 0; hour <= 23; hour++) {
+    for (let minute = 0; minute < 60; minute += 5) {
+      const formattedTime = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
+      timeSlots.push(formattedTime);
+    }
+  }
+  return timeSlots;
+};
 
 export default function ProfileSettings() {
+  const [fullName, setFullName] = useState("");
+  const [age, setAge] = useState("");
+  const [morningTime, setMorningTime] = useState("09:00");
+  const [afternoonTime, setAfternoonTime] = useState("13:00");
+  const [nightTime, setNightTime] = useState("20:00");
+  
+  const getTimes = async () => {
+    const tempMorning = await AsyncStorage.getItem("morningTime");
+    const tempAfternoon = await AsyncStorage.getItem("afternoonTime");
+    const tempNight = await AsyncStorage.getItem("nightTime");
+    setMorningTime(tempMorning);
+    setAfternoonTime(tempAfternoon);
+    setNightTime(tempNight);
+  }
+
+  const timeSlots = generateTimeSlots();
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  useEffect(() => {
+    getTimes();
+    const initializeAndLoad = async () => {
+      if (isInitialized) return;
+
+      try {
+        console.log("Initializing database...");
+        setIsLoading(true);
+
+        initializeDatabase();
+        setIsInitialized(true);
+        console.log("Database initialized successfully");
+
+        await loadSettings();
+      } catch (error) {
+        console.error("Error initializing:", error);
+        Alert.alert("Database Error", error?.message || "Unknown error");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeAndLoad();
+  }, [isInitialized]);
+
+  const loadSettings = async () => {
+    try {
+      console.log("Loading settings from database...");
+      setIsLoading(true);
+
+      const settings = await getSettings();
+      console.log("Settings from database:", settings);
+
+      if (settings) {
+        console.log("Settings found, updating state...");
+        setFullName(settings.name ?? "");
+        setAge(settings.age ? settings.age.toString() : ""); 
+        setMorningTime(settings.morningtime ?? "09:00");
+        setAfternoonTime(settings.afternoontime ?? "13:00");
+        setNightTime(settings.nighttime ?? "20:00");
+
+        console.log("State updated with:", {
+          name: settings.name,
+          age: settings.age,
+          morningTime: settings.morningtime,
+          afternoonTime: settings.afternoontime,
+          nightTime: settings.nighttime,
+        });
+      } else {
+        console.log("ℹNo settings found in database");
+      }
+    } catch (error) {
+      console.error("Error loading settings:", error);
+      Alert.alert(
+        "Error",
+        "Failed to load settings: " + (error?.message || "Unknown error")
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const saveSettings = async () => {
+    if (!fullName.trim()) {
+      Alert.alert("Required Field", "Please enter your full name");
+      return;
+    }
+
+    if (
+      age &&
+      (isNaN(parseInt(age)) || parseInt(age) < 0 || parseInt(age) > 150)
+    ) {
+      Alert.alert("Invalid Age", "Please enter a valid age between 0 and 150");
+      return;
+    }
+
+    try {
+      console.log("Saving settings to database...");
+      setIsLoading(true);
+
+      const dataToSave = {
+        fullName: fullName.trim(),
+        age: age ? parseInt(age) : null,
+        morningTime: morningTime.trim(),
+        afternoonTime: afternoonTime.trim(),
+        nightTime: nightTime.trim(),
+      };
+
+      console.log("Data to save:", dataToSave);
+
+      const success = await insertSetting(
+        dataToSave.fullName,
+        dataToSave.age,
+        "",
+        "",
+        "",
+        "",
+        dataToSave.morningTime,
+        dataToSave.afternoonTime,
+        dataToSave.nightTime
+      );
+      
+      await AsyncStorage.setItem("morningTime", dataToSave.morningTime);
+      await AsyncStorage.setItem("afternoonTime", dataToSave.afternoonTime);
+      await AsyncStorage.setItem("nightTime", dataToSave.nightTime);       
+
+      console.log("Save result:", success);
+
+      if (success) {
+        Alert.alert("Success", "Settings saved successfully!");
+        await loadSettings();
+      } else {
+        Alert.alert(
+          "Error",
+          "Failed to save settings - database operation returned false"
+        );
+      }
+    } catch (error) {
+      console.error("Error saving settings:", error);
+      Alert.alert(
+        "Save Error",
+        `Failed to save settings: ${error?.message || "Unknown error"}\n\nPlease check your data and try again.`
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading settings...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollView}>
@@ -28,64 +200,93 @@ export default function ProfileSettings() {
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Personal Information</Text>
-
           <Text style={styles.label}>Full Name *</Text>
-          <TextInput style={styles.input} value="" editable={true} />
-
-          <Text style={styles.label}>Age</Text>
           <TextInput
             style={styles.input}
-            value=""
-            editable={true}
+            value={fullName}
+            onChangeText={setFullName}
+            placeholder="Enter your full name"
+            autoCapitalize="words"
+          />
+          <Text style={styles.label}>Age</Text>
+          <TextInput
             keyboardType="numeric"
+            style={styles.input}
+            value={age}
+            onChangeText={setAge}
+            placeholder="Enter your age"
+            maxLength={3}
           />
         </View>
+
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Meal Times</Text>
 
           <Text style={styles.label}>Breakfast Time</Text>
           <RNPickerSelect
-            value="09:00"
-            items={timeSlots}
-            onValueChange={() => {}}
-            style={pickerSelectStyles}
-            useNativeAndroidPickerStyle={false}
-            Icon={() => (
-              <Ionicons name="chevron-down" size={24} color="black" />
-            )}
+            onValueChange={setMorningTime}
+            value={morningTime}
+            items={timeSlots.map((time) => ({ label: time, value: time }))}
+            style={{
+              inputIOS: styles.input,
+              inputAndroid: styles.input,
+              iconContainer: {
+                top: 10,
+                right: 10,
+              }
+            }}
+            Icon={() => <Ionicons name="chevron-down" size={24} color="black" />}
           />
 
           <Text style={styles.label}>Lunch Time</Text>
           <RNPickerSelect
-            value="13:00"
-            items={timeSlots}
-            onValueChange={() => {}}
-            style={pickerSelectStyles}
-            useNativeAndroidPickerStyle={false}
-            Icon={() => (
-              <Ionicons name="chevron-down" size={24} color="black" />
-            )}
+            onValueChange={setAfternoonTime}
+            value={afternoonTime}
+            items={timeSlots.map((time) => ({ label: time, value: time }))}
+            style={{
+              inputIOS: styles.input,
+              inputAndroid: styles.input,
+              iconContainer: {
+                top: 10,
+                right: 10,
+              }
+            }}
+            Icon={() => <Ionicons name="chevron-down" size={24} color="black" />}
           />
 
           <Text style={styles.label}>Dinner Time</Text>
           <RNPickerSelect
-            value="20:00"
-            items={timeSlots}
-            onValueChange={() => {}}
-            style={pickerSelectStyles}
-            useNativeAndroidPickerStyle={false}
-            Icon={() => (
-              <Ionicons name="chevron-down" size={24} color="black" />
-            )}
+            onValueChange={setNightTime}
+            value={nightTime}
+            items={timeSlots.map((time) => ({ label: time, value: time }))}
+            style={{
+              inputIOS: styles.input,
+              inputAndroid: styles.input,
+              iconContainer: {
+                top: 10,
+                right: 10,
+              }
+            }}
+            Icon={() => <Ionicons name="chevron-down" size={24} color="black" />}
           />
         </View>
 
         <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.reloadButton}>
+          <TouchableOpacity
+            style={[styles.reloadButton, isLoading && styles.disabledButton]}
+            onPress={loadSettings}
+            disabled={isLoading}
+          >
             <Text style={styles.reloadButtonText}>Reset</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.saveButton}>
-            <Text style={styles.saveButtonText}>Save Settings</Text>
+          <TouchableOpacity
+            style={[styles.saveButton, isLoading && styles.disabledButton]}
+            onPress={saveSettings}
+            disabled={isLoading}
+          >
+            <Text style={styles.saveButtonText}>
+              {isLoading ? "Saving..." : "Save Settings"}
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -101,6 +302,15 @@ const styles = StyleSheet.create({
   scrollView: {
     padding: 16,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    fontSize: 16,
+    color: "#666",
+  },
   title: {
     fontSize: 30,
     fontWeight: "700",
@@ -112,6 +322,40 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 16,
     color: "#555",
+  },
+  saveButton: {
+    backgroundColor: "#007AFF",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: "center",
+    flex: 1,
+  },
+  saveButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 16,
+  },
+  buttonRow: {
+    flexDirection: "row",
+    marginBottom: 16,
+    gap: 8,
+  },
+  reloadButton: {
+    backgroundColor: "#ffffff",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: "center",
+    flex: 1,
+  },
+  reloadButtonText: {
+    color: "#007AFF",
+    fontWeight: "600",
+    fontSize: 16,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   card: {
     backgroundColor: "#fff",
@@ -141,38 +385,66 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 12,
     fontSize: 16,
+  },
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  rowText: {
+    fontSize: 16,
     color: "#333",
   },
-  buttonRow: {
+  textSize: {
+    fontSize: 14,
+    color: "#444",
+  },
+  textSizeBox: {
+    backgroundColor: "#F4F4F4",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  textSizeValue: {
+    fontSize: 14,
+    color: "#333",
+  },
+  debugSection: {
     flexDirection: "row",
-    marginBottom: 16,
-    gap: 8,
+    justifyContent: "space-between",
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#ddd",
   },
-  saveButton: {
-    backgroundColor: "#007AFF",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    alignItems: "center",
+  debugButton: {
+    backgroundColor: "#6c757d",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
     flex: 1,
+    marginRight: 5,
+    alignItems: "center",
   },
-  saveButtonText: {
+  debugButtonText: {
     color: "#fff",
-    fontWeight: "600",
-    fontSize: 16,
+    fontSize: 12,
+    fontWeight: "500",
   },
-  reloadButton: {
-    backgroundColor: "#ffffff",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    alignItems: "center",
+  clearButton: {
+    backgroundColor: "#dc3545",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
     flex: 1,
+    marginLeft: 5,
+    alignItems: "center",
   },
-  reloadButtonText: {
-    color: "#007AFF",
-    fontWeight: "600",
-    fontSize: 16,
+  clearButtonText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "500",
   },
 });
 
@@ -183,9 +455,6 @@ const pickerSelectStyles = {
     paddingHorizontal: 10,
     color: "black",
     paddingRight: 30,
-    backgroundColor: "#F4F4F4",
-    borderRadius: 8,
-    marginBottom: 12,
   },
   inputAndroid: {
     fontSize: 16,
@@ -193,12 +462,9 @@ const pickerSelectStyles = {
     paddingHorizontal: 10,
     color: "black",
     paddingRight: 30,
-    backgroundColor: "#F4F4F4",
-    borderRadius: 8,
-    marginBottom: 12,
   },
   iconContainer: {
-    top: 10,
+    top: 15,
     right: 10,
   },
 };

@@ -1,15 +1,14 @@
-
 import * as SQLite from 'expo-sqlite';
-const db = SQLite.openDatabaseSync('cura.db');
 
+const db = SQLite.openDatabaseSync('cura.db');
 
 export const getDatabaseStatus = async () => {
   try {
     const result = await db.getAllAsync(`SELECT name FROM sqlite_master WHERE type='table';`);
-    console.log('Database tables:', result);
+    console.log('  Database tables:', result);
     return result;
   } catch (error) {
-    console.error('Error fetching database status:', error);
+    console.error('  Error fetching database status:', error);
     return [];
   }
 };
@@ -23,9 +22,9 @@ const createNotiTable = () => {
         NotificationTime TEXT NOT NULL
       );
     `);
-    console.log('Notification table created successfully');
+    console.log('  Notification table created successfully');
   } catch (error) {
-    console.error('Error creating Notification table:', error);
+    console.error('  Error creating Notification table:', error);
   }
 }
 
@@ -36,11 +35,11 @@ const addNoti = async (name, time) => {
        VALUES (?, ?)`,
       [name, time]
     );
-    console.log('Insert result:', result);
+    console.log('  Insert result:', result);
     console.log('New notification ID:', result.lastInsertRowId);
     return result.changes > 0;
   } catch (error) {
-    console.error('Error adding notification:', error);
+    console.error('  Error adding notification:', error);
     return false;
   }
 }
@@ -51,7 +50,7 @@ const getAllNotifications = async () => {
     console.log('Retrieved notifications:', notifications);
     return notifications;
   } catch (error) {
-    console.error('Error fetching notifications:', error);
+    console.error('  Error fetching notifications:', error);
     return [];
   }
 };
@@ -59,15 +58,16 @@ const getAllNotifications = async () => {
 const deleteNoti = async (id) => {
   try {
     const result = await db.runAsync('DELETE FROM Notification WHERE NotificationID = ?', [id]);
-    console.log('Delete result:', result);
+    console.log('  Delete result:', result);
     return result.changes > 0;
   } catch (error) {
-    console.error('Error deleting notification:', error);
+    console.error('  Error deleting notification:', error);
     return false;
   }
 }
 
 export { createNotiTable, addNoti, getAllNotifications, deleteNoti };
+
 
 const createMedicineTable = () => {
   try {
@@ -82,10 +82,10 @@ const createMedicineTable = () => {
         StartDate DATE NOT NULL
       );
     `);
-    console.log('Medicine table created successfully');
+    console.log('  Medicine table created successfully');
     return true;
   } catch (error) {
-    console.error('Error creating Medicine table:', error);
+    console.error('  Error creating Medicine table:', error);
     return false;
   }
 };
@@ -107,12 +107,12 @@ const insertMedicine = async (name, quantityLiquid, quantityTablet, numberOfDays
       [name, quantityLiquid, quantityTablet, numberOfDays, timeToBeTakenAt, startDate]
     );
     
-    console.log('Insert result:', result);
+    console.log('  Insert result:', result);
     console.log('New medicine ID:', result.lastInsertRowId);
     
     return result.changes > 0;
   } catch (error) {
-    console.error('Error inserting medicine:', error);
+    console.error('  Error inserting medicine:', error);
     return false;
   }
 };
@@ -123,7 +123,7 @@ const getAllMedicines = async () => {
     console.log('Retrieved medicines:', medicines);
     return medicines;
   } catch (error) {
-    console.error('Error fetching medicines:', error);
+    console.error('  Error fetching medicines:', error);
     return [];
   }
 };
@@ -133,10 +133,11 @@ const getMedicineById = async (id) => {
     const medicine = await db.getFirstAsync('SELECT * FROM Medicine WHERE MedicineID = ?', [id]);
     return medicine;
   } catch (error) {
-    console.error('Error fetching medicine by ID:', error);
+    console.error('  Error fetching medicine by ID:', error);
     return null;
   }
 };
+
 
 const updateMedicine = async (id, name, quantityLiquid, quantityTablet, numberOfDays, timeToBeTakenAt, startDate) => {
   try {
@@ -149,7 +150,7 @@ const updateMedicine = async (id, name, quantityLiquid, quantityTablet, numberOf
     );
     return result.changes > 0;
   } catch (error) {
-    console.error('Error updating medicine:', error);
+    console.error('  Error updating medicine:', error);
     return false;
   }
 };
@@ -159,11 +160,10 @@ const deleteMedicine = async (id) => {
     const result = await db.runAsync('DELETE FROM Medicine WHERE MedicineID = ?', [id]);
     return result.changes > 0;
   } catch (error) {
-    console.error('Error deleting medicine:', error);
+    console.error('  Error deleting medicine:', error);
     return false;
   }
 };
-
 
 const debugShowAllMedicines = async () => {
   try {
@@ -174,7 +174,7 @@ const debugShowAllMedicines = async () => {
     });
     return medicines;
   } catch (error) {
-    console.error('Debug error:', error);
+    console.error('  Debug error:', error);
     return [];
   }
 };
@@ -202,9 +202,9 @@ export const initDatabase = () => {
         primaryDoctor TEXT NOT NULL
       );
     `);
-    console.log('Settings table created successfully');
+    console.log('  Settings table created successfully');
   } catch (error) {
-    console.error('Error creating settings table:', error);
+    console.error('  Error creating settings table:', error);
   }
 };
 
@@ -214,10 +214,10 @@ export const insertSetting = async (name, age, language, bloodgroup, emergencyCo
       `INSERT OR REPLACE INTO settings (name, age, language, bloodgroup, emergencyContact, primaryDoctor) VALUES (?, ?, ?, ?, ?, ?);`,
       [name, age, language, bloodgroup, emergencyContact, primaryDoctor]
     );
-    console.log('Insert result:', result);
+    console.log('  Insert result:', result);
     return true;
   } catch (error) {
-    console.error('Error inserting setting:', error);
+    console.error('  Error inserting setting:', error);
     return false;
   }
 };
@@ -226,7 +226,7 @@ export const getSettings = async () => {
   try {
     return await db.getFirstAsync(`SELECT * FROM settings LIMIT 1;`);
   } catch (error) {
-    console.error('Error fetching settings:', error);
+    console.error('  Error fetching settings:', error);
     return null;
   }
 };
@@ -236,7 +236,7 @@ export const clearSettings = async () => {
     await db.runAsync(`DELETE FROM settings;`);
     return true;
   } catch (error) {
-    console.error('Error clearing settings:', error);
+    console.error('  Error clearing settings:', error);
     return false;
   }
 };
@@ -255,9 +255,9 @@ export const dietpage = () => {
         description TEXT NOT NULL
       );
     `);
-    console.log('Diet table created successfully');
+    console.log('  Diet table created successfully');
   } catch (error) {
-    console.error('Error creating diet table:', error);
+    console.error('  Error creating diet table:', error);
   }
 };
 
@@ -269,7 +269,7 @@ export const insertDiet = async (calories, protein, water, breakfast, lunch, din
     );
     return true;
   } catch (error) {
-    console.error('Error inserting diet:', error);
+    console.error('  Error inserting diet:', error);
     return false;
   }
 };
@@ -278,7 +278,7 @@ export const getLatestDiet = async () => {
   try {
     return await db.getFirstAsync(`SELECT * FROM diet ORDER BY id DESC LIMIT 1;`);
   } catch (error) {
-    console.error('Error fetching latest diet:', error);
+    console.error('  Error fetching latest diet:', error);
     return null;
   }
 };
@@ -287,7 +287,7 @@ export const getAllDiets = async () => {
   try {
     return await db.getAllAsync(`SELECT * FROM diet ORDER BY id DESC;`);
   } catch (error) {
-    console.error('Error fetching diets:', error);
+    console.error('  Error fetching diets:', error);
     return [];
   }
 };
@@ -297,7 +297,7 @@ export const initializeDatabase = () => {
   initDatabase();
   dietpage();
   createNotiTable();
-  console.log('All tables initialized');
+  console.log('  All tables initialized');
 };
 
 

@@ -68,7 +68,6 @@ const Confirmation = () => {
             style={{
               fontSize: 24,
               fontWeight: "bold",
-              // marginBottom: 20,
             }}
           >
             Medicines Found

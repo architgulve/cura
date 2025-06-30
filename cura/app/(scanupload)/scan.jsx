@@ -152,7 +152,6 @@ const Scanner = () => {
             justifyContent: "center",
             alignItems: "center",
             backgroundColor: "#DFF6FB",
-            // gap: 40,
           }}
         >
           <View

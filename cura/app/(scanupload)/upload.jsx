@@ -39,7 +39,7 @@ const Upload = () => {
     });
 
     try {
-      const res = await axios.post("http://<your-ip-address>:8000/ocr/", formData, {
+      const res = await axios.post("http://<YOUR_IP_ADDRESS>:8000/ocr/", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },

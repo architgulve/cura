@@ -1,31 +1,54 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import {
+  getAllMedicines,
+  createMedicineTable,
+  getAllNotifications,
+} from "../utility/database";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router } from "expo-router";
 
 export default function HomeReminderPreview() {
-  const notis = [
-    {
-      NotificationID: 1,
-      NotificationName: "Paracetamol",
-      NotificationTime: "morning",
-      taken: false,
-    },
-    {
-      NotificationID: 2,
-      NotificationName: "Vitamin D",
-      NotificationTime: "night",
-      taken: true,
-    },
-  ];
+  const [notis, setNotis] = useState([]);
 
-  const timemap = {
-    morning: "09:00",
-    afternoon: "13:00",
-    night: "20:00",
-    evening: "20:00",
+  const now = new Date();
+  const currentTime = now.toTimeString().slice(0, 5);
+
+  const [morningTime, setMorningTime] = useState("09:00");
+  const [afternoonTime, setAfternoonTime] = useState("13:00");
+  const [nightTime, setNightTime] = useState("20:00");
+
+  const fetchMealTimes = async () => {
+    const tempMorning = await AsyncStorage.getItem("morningTime");
+    const tempAfternoon = await AsyncStorage.getItem("afternoonTime");
+    const tempNight = await AsyncStorage.getItem("nightTime");
+    setMorningTime(tempMorning);
+    setAfternoonTime(tempAfternoon);
+    setNightTime(tempNight);
   };
 
-  const currentTime = "10:00";
+  const timemap = {
+    morning: morningTime,
+    afternoon: afternoonTime,
+    night: nightTime,
+    evening: nightTime,
+  };
+
+  const fetchData = async () => {
+    try {
+      const noti = await getAllNotifications();
+      setNotis(noti);
+      console.log("✅ Fetched meds:", noti);
+    } catch (err) {
+      console.error("❌ Error fetching meds for homepage", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+    fetchMealTimes();
+  }, []);
 
   return (
     <View
@@ -49,7 +72,12 @@ export default function HomeReminderPreview() {
             Medication Reminders
           </Text>
         </View>
-        <TouchableOpacity onPress={() => {}}>
+        <TouchableOpacity
+          onPress={() => {
+            fetchData();
+            fetchMealTimes();
+          }}
+        >
           <Ionicons name="refresh-outline" size={30} color="black" />
         </TouchableOpacity>
       </View>
@@ -101,7 +129,10 @@ export default function HomeReminderPreview() {
           </View>
         ))}
 
-        <TouchableOpacity onPress={() => {}}>
+        {/* View All Button */}
+        <TouchableOpacity
+          onPress={() => router.push("/(medireminders)/remind")}
+        >
           <View
             style={{
               backgroundColor: "#007AFF",
@@ -122,9 +153,7 @@ export default function HomeReminderPreview() {
               color="white"
               style={{ marginRight: 5 }}
             />
-            <Text style={{ color: "white", fontWeight: "bold" }}>
-              View All Reminders
-            </Text>
+            <Text style={{ color: "white", fontWeight: "bold" }}>View All Reminders</Text>
           </View>
         </TouchableOpacity>
       </View>
